@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -38,18 +38,14 @@ namespace Anchor.FA.BLL.WorkFlow
         {
             lock (lockObj)
             {
+                Log4Net.LogInfo(string.Format("Enter ApplyFlow flowId:{0},flowNo:{1}", flowId, flowNo));
+
                 if (flowNo < 0 || flowId <= 0 || applyerId <= 0)
                 {
                     return -1;
                 }
 
-                //防止重复点击
-                //if (Convert.ToString(HttpContext.Current.Session[applyerId.ToString()])==string.Format("flowId{0},flowNo{1}", flowId, flowNo))
-                //{
-                //    return -1;
-                //}
-
-                using (TransactionScope scope = new TransactionScope())
+                using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions() { IsolationLevel = IsolationLevel.ReadCommitted }))
                 {
                     try
                     {
@@ -59,14 +55,12 @@ namespace Anchor.FA.BLL.WorkFlow
 
                         int activityInstId = int.Parse(param["ActivityInstId"]);
 
-                        List<int> listActivityId = GetNextActivitys(activityInstId).Select(t => t.ID).ToList();
+                        List<int> listActivityId = GetNextActivitysForInner(activityInstId).Select(t => t.ID).ToList();
 
                         //转交下一步
-                        if (TransferBack(activityInstId, listActivityId))
+                        if (TransferBackForInner(activityInstId, listActivityId))
                         {
                             scope.Complete();
-
-                            //HttpContext.CurrentSession[applyerId.ToString()] = string.Format("flowId{0},flowNo{1}", flowId, flowNo);
 
                             return flowNo;
                         }
@@ -77,9 +71,13 @@ namespace Anchor.FA.BLL.WorkFlow
                     }
                     catch (Exception ex)
                     {
-                        Log4Net.LogError("Workflow_Engine", string.Format("flowId:{0},flowNo:{1},Message:{2}", flowId, flowNo, ex.ToString()));
+                        Log4Net.LogError("ApplyFlow", string.Format("flowId:{0},flowNo:{1},Message:{2}", flowId, flowNo, ex.ToString()));
 
                         return -1;
+                    }
+                    finally
+                    {
+                        Log4Net.LogInfo(string.Format("Exist ApplyFlow flowId:{0},flowNo:{1}", flowId, flowNo));
                     }
                 }
             }
@@ -94,31 +92,38 @@ namespace Anchor.FA.BLL.WorkFlow
         /// <returns></returns>
         public bool RecallFlow(int flowId, int flowNo, string remark)
         {
-            using (TransactionScope scope = new TransactionScope())  
+            lock (lockObj)
             {
-                try
-                {
-                    FlowInstance instFlow = new FlowInstance(flowId, flowNo);
+                Log4Net.LogInfo(string.Format("Enter RecallFlow flowId:{0},flowNo:{1}", flowId, flowNo));
 
-                    if (instFlow.Status != FlowInstanceState.Active)
+                using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions() { IsolationLevel = IsolationLevel.ReadCommitted }))
+                {
+                    try
                     {
-                        return false;
+                        FlowInstance instFlow = new FlowInstance(flowId, flowNo);
+
+                        if (instFlow.Status != FlowInstanceState.Active)
+                        {
+                            return false;
+                        }
+
+                        instFlow.Recall(remark);
+
+                        scope.Complete();
+                    }
+                    catch (Exception ex)
+                    {
+                        Log4Net.LogError("RecallFlow", string.Format("flowId:{0},flowNo:{1},Message:{2}", flowId, flowNo, ex.ToString()));
+
+                        return false; ;
+                    }
+                    finally
+                    {
+                        Log4Net.LogInfo(string.Format("Exist RecallFlow flowId:{0},flowNo:{1}", flowId, flowNo));
                     }
 
-                    instFlow.Recall(remark);
-
-                    scope.Complete();
-
-                    //HttpContext.Current.Session.Abandon();
+                    return true;
                 }
-                catch (Exception ex)
-                {
-                    Log4Net.LogError("Workflow_Engine", string.Format("flowId:{0},flowNo:{1},Message:{2}", flowId, flowNo, ex.ToString()));
-
-                    return false; ;
-                }
-
-                return true;
             }
         }
 
@@ -130,103 +135,125 @@ namespace Anchor.FA.BLL.WorkFlow
         /// <returns>流程实例id,开始关卡实例id，流程号</returns>
         public void ApplyInnerFlow(int flowId, ref int flowNo, int applyerId, string formDigest, out Dictionary<string, string> param)
         {
-            using (TransactionScope scope = new TransactionScope())
+            Log4Net.LogInfo(string.Format("Enter ApplyInnerFlow flowId:{0},flowNo:{1}", flowId, flowNo));
+            
+            param = new Dictionary<string, string>();
+
+            if (flowNo == 0)
             {
-                param = new Dictionary<string, string>();
-
-                if (flowNo == 0)
-                {
-                    flowNo = CreateFlowNo(flowId);
-                }
-
-                //创建流程实例
-                FlowInstance flowInst = new FlowInstance();
-                ActivityInstance activityInst = new ActivityInstance();
-
-                if (FlowInstance.Exists(flowId, flowNo))
-                {
-                    flowInst = new FlowInstance(flowId, flowNo);
-                    flowInst.UpdateDigest(formDigest);
-                    Activity startActvity = flowInst.FlowDefine.GetStartActivity();
-                    activityInst = flowInst.FindActivityInstance(ActivityType.START);
-
-                    WorkItemInstance item = new WorkItemInstance();
-                    item.CreateResend(activityInst.ID, flowInst.ApplerID, "");
-                }
-                else
-                {
-                    flowInst.Create(flowId, flowNo, applyerId, formDigest);
-                    activityInst.Create(flowInst.ID, flowInst.FlowDefine.GetStartActivity().ID);
-                    activityInst.Active();
-                }
-
-                //返回流程实例id,开始关卡实例id，流程号
-                param.Add("FlowInstId", flowInst.ID.ToString());
-                param.Add("ActivityInstId", activityInst.ID.ToString());
-                param.Add("SplitType", flowInst.FlowDefine.GetStartActivity().SplitType);
-
-                scope.Complete();
-
+                flowNo = CreateFlowNo(flowId);
             }
+
+            //创建流程实例
+            FlowInstance flowInst = new FlowInstance();
+            ActivityInstance activityInst = new ActivityInstance();
+
+            if (FlowInstance.Exists(flowId, flowNo))
+            {
+                flowInst = new FlowInstance(flowId, flowNo);
+
+                if(flowInst.Status == FlowInstanceState.Active)
+                {
+                    throw new Exception("流程实例状态已激活，不能重新送出");
+                }
+
+                flowInst.UpdateDigest(formDigest);
+                Activity startActvity = flowInst.FlowDefine.GetStartActivity();
+                activityInst = flowInst.FindActivityInstance(ActivityType.START);
+
+                WorkItemInstance item = new WorkItemInstance();
+                item.CreateResend(activityInst.ID, flowInst.ApplerID, "");
+            }
+            else
+            {
+                flowInst.Create(flowId, flowNo, applyerId, formDigest);
+                activityInst.Create(flowInst.ID, flowInst.FlowDefine.GetStartActivity().ID);
+                activityInst.Active();
+            }
+
+            //返回流程实例id,开始关卡实例id，流程号
+            param.Add("FlowInstId", flowInst.ID.ToString());
+            param.Add("ActivityInstId", activityInst.ID.ToString());
+            param.Add("SplitType", flowInst.FlowDefine.GetStartActivity().SplitType);
+
+            Log4Net.LogInfo(string.Format("Exist ApplyInnerFlow flowId:{0},flowNo:{1}", flowId, flowNo));
         }
 
 
         public bool DeleteFlowStance(int flowInstId)
         {
-            try
+            lock (lockObj)
             {
-                F_INST_FLOW flowInst = DAL.WorkFlow.FlowInstance.Get(flowInstId);
+                Log4Net.LogInfo(string.Format("Enter DeleteFlowStance flowInstId:{0}", flowInstId));
 
-                if (flowInst == null) return false;
-
-                if (flowInst.State == FlowInstanceState.Recall 
-                    || flowInst.State == FlowInstanceState.InActive
-                    || flowInst.State == FlowInstanceState.Reject)
+                try
                 {
-                    DAL.WorkFlow.FlowInstance.Delete(flowInstId);
+                    F_INST_FLOW flowInst = DAL.WorkFlow.FlowInstance.Get(flowInstId);
+
+                    if (flowInst == null) return false;
+
+                    if (flowInst.State == FlowInstanceState.Recall
+                        || flowInst.State == FlowInstanceState.InActive
+                        || flowInst.State == FlowInstanceState.Reject)
+                    {
+                        DAL.WorkFlow.FlowInstance.Delete(flowInstId);
+                    }
+                    else
+                    {
+                        return false;
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
+                    Log4Net.LogError("DeleteFlowStance", string.Format("FlowInstId:{0},Message:{1}", flowInstId, ex.ToString()));
+
                     return false;
                 }
-            }
-            catch (Exception ex)
-            {
-                Log4Net.LogError("Workflow_Engine", string.Format("FlowInstId:{0},Message:{1}", flowInstId, ex.ToString()));
+                finally
+                {
+                    Log4Net.LogInfo(string.Format("Exist DeleteFlowStance flowInstId:{0}", flowInstId));
+                }
 
-                return false;
+                return true;
             }
-
-            return true;
         }
 
         public bool DeleteFlowStance(int flowId,int flowNo)
         {
-            try
+            lock (lockObj)
             {
-                F_INST_FLOW flowInst = DAL.WorkFlow.FlowInstance.Get(flowId,flowNo);
+                Log4Net.LogInfo(string.Format("Enter DeleteFlowStance flowId:{0},flowNo:{1}", flowId, flowNo));
 
-                if (flowInst == null) return false;
-
-                if (flowInst.State == FlowInstanceState.Recall
-                    || flowInst.State == FlowInstanceState.InActive
-                    || flowInst.State == FlowInstanceState.Reject)
+                try
                 {
-                    DAL.WorkFlow.FlowInstance.Delete(flowInst.ID);
+                    F_INST_FLOW flowInst = DAL.WorkFlow.FlowInstance.Get(flowId, flowNo);
+
+                    if (flowInst == null) return false;
+
+                    if (flowInst.State == FlowInstanceState.Recall
+                        || flowInst.State == FlowInstanceState.InActive
+                        || flowInst.State == FlowInstanceState.Reject)
+                    {
+                        DAL.WorkFlow.FlowInstance.Delete(flowInst.ID);
+                    }
+                    else
+                    {
+                        return false; ;
+                    }
                 }
-                else
+                catch (Exception ex)
                 {
-                    return false; ;
+                    Log4Net.LogError("DeleteFlowStance", string.Format("FlowId:{0},FlowId:{1},Message:{2}", flowId, flowNo, ex.ToString()));
+
+                    return false;
                 }
-            }
-            catch (Exception ex)
-            {
-                Log4Net.LogError("Workflow_Engine", string.Format("FlowId:{0},FlowId:{1},Message:{2}", flowId,flowNo,ex.ToString()));
+                finally
+                {
+                    Log4Net.LogInfo(string.Format("Exist DeleteFlowStance flowId:{0},flowNo:{1}", flowId, flowNo));
+                }
 
-                return false;
+                return true;
             }
-
-            return true;
         }
 
         /// <summary>
@@ -240,20 +267,12 @@ namespace Anchor.FA.BLL.WorkFlow
         public bool Approve(int workItemId, int approverId, string approveValue,
             string approveRemark, string nextActivityId)
         {
-            //防止重复点击
-            //if (Convert.ToString(HttpContext.Current.Session[approverId.ToString()]) == string.Format("WorkItemId:{0}", workItemId))
-            //{
-            //    return false;
-            //}
-            //else
-            //{
-            //    HttpContext.Current.Session[approverId.ToString()] = string.Format("WorkItemId:{0}", workItemId);
-            //}
-
-
             lock (lockObj)
             {
-                using (TransactionScope scope = new TransactionScope())
+                Log4Net.LogInfo(string.Format("Enter Approve workItemId:{0},approverId:{1},approveValue:{2},approveRemark:{3},nextActivityId:{4}", 
+                                                    workItemId, approverId, approveValue, approveRemark, nextActivityId));
+
+                using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions() { IsolationLevel = IsolationLevel.ReadCommitted }))
                 {
                     try
                     {
@@ -261,16 +280,13 @@ namespace Anchor.FA.BLL.WorkFlow
                         FlowInstance instFlow = instWorkItem.ActivityInstance.FlowInstance;
                         ActivityInstance instActivity = instWorkItem.ActivityInstance;
 
+                        //验证数字摘要
+                        //if (!instFlow.VerifyDigest())
+                        //{
+                        //    Log4Net.LogError("Workflow_Engine", string.Format("WorkItemID:{0},Message:表单数据变化，无法签核", workItemId));
 
-                        if (approveValue == WorkItemAppValue.Agree)
-                        {
-                            //验证数字摘要
-                            if (!instFlow.VerifyDigest())
-                            {
-                                Log4Net.LogError("Workflow_Engine", string.Format("WorkItemID:{0},Message:表单数据变化，无法签核", workItemId));
-                                return false;
-                            }
-                        }
+                        //    return false;
+                        //}
 
                         //数字签名
                         if (instActivity.Activity.IsSign.ToUpper() == "Y")
@@ -337,7 +353,7 @@ namespace Anchor.FA.BLL.WorkFlow
                                     listActivityId.Add(int.Parse(id));
                                 }
 
-                                if (!TransferBack(instWorkItem.ActivityInstance.ID, listActivityId))
+                                if (!TransferBackForInner(instWorkItem.ActivityInstance.ID, listActivityId))
                                 {
                                     return false;
                                 }
@@ -356,11 +372,15 @@ namespace Anchor.FA.BLL.WorkFlow
                     }
                     catch (Exception ex)
                     {
-                        Log4Net.LogError("Workflow_Engine", string.Format("WorkItemID:{0},Message:{1}", workItemId, ex.ToString()));
+                        Log4Net.LogError("Approve", string.Format("WorkItemID:{0},Message:{1}", workItemId, ex.ToString()));
 
                         return false;
                     }
-
+                    finally
+                    {
+                        Log4Net.LogInfo(string.Format("Exist Approve workItemId:{0},approverId:{1},approveValue:{2},approveRemark:{3},nextActivityId:{4}", 
+                            workItemId, approverId, approveValue,approveRemark, nextActivityId));
+                    }
                 }
             }
         }
@@ -398,50 +418,79 @@ namespace Anchor.FA.BLL.WorkFlow
             }
         }
 
+        public List<F_ACTIVITY> GetNextActivitys(int activityInstId)
+        {
+            lock(lockObj)
+            {
+                return GetNextActivitysForInner(activityInstId);
+            }
+        }
+
         /// <summary>
         /// 得到下一关卡集合
         /// </summary>
         /// <param name="activityInstanceId">关卡实例id</param>
         /// <returns>关卡集合</returns>
-        public List<F_ACTIVITY> GetNextActivitys(int activityInstId)
+        private List<F_ACTIVITY> GetNextActivitysForInner(int activityInstId)
         {
+            Log4Net.LogInfo(string.Format("Enter GetNextActivitys ActivityInstId:{0}", activityInstId));
+
             List<F_ACTIVITY> listActivity = new List<F_ACTIVITY>();
 
-            using (TransactionScope scope = new TransactionScope())
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions() { IsolationLevel = IsolationLevel.ReadCommitted }))
             {
-                //获得关卡的发散Transation
-                ActivityInstance activityInst = new ActivityInstance(activityInstId);
-
-                List<Transation> listTransation = activityInst.Activity.SplitTransations;
-
-                List<TransationInstance> listTransationInstance = new List<TransationInstance>();
-
-                //实例化Transation并解析
-                foreach (Transation trans in listTransation)
+                try
                 {
-                    //解析Transation条件
-                    TransationInstance transInst = new TransationInstance();
-                    transInst.Create(activityInst.ID, trans.ID);
-                    transInst.Parse();
+                    //获得关卡的发散Transation
+                    ActivityInstance activityInst = new ActivityInstance(activityInstId);
 
-                    if (transInst.Value)
+                    List<Transation> listTransation = activityInst.Activity.SplitTransations;
+
+                    //实例化Transation并解析
+                    foreach (Transation trans in listTransation)
                     {
-                        //关卡集合
-                        F_ACTIVITY activity = new F_ACTIVITY();
+                        //解析Transation条件
+                        TransationInstance transInst = new TransationInstance();
+                        transInst.Create(activityInst.ID, trans.ID);
+                        transInst.Parse();
 
-                        activity.ID = transInst.Transation.ToActivity.ID;
-                        activity.Name = transInst.Transation.ToActivity.Name;
+                        if (transInst.Value)
+                        {
+                            //关卡集合
+                            F_ACTIVITY activity = new F_ACTIVITY();
 
-                        listActivity.Add(activity);
+                            activity.ID = transInst.Transation.ToActivity.ID;
+                            activity.Name = transInst.Transation.ToActivity.Name;
+
+                            listActivity.Add(activity);
+                        }
                     }
+
+                    scope.Complete();
+
+                    return listActivity;
+
                 }
-
-                scope.Complete();
-
-                return listActivity;
+                catch (Exception ex)
+                {
+                    Log4Net.LogError("GetNextActivitys", string.Format("ActivityInstId:{0},Message:{1}", activityInstId, ex.ToString()));
+                    throw ex;
+                }
+                finally
+                {
+                    Log4Net.LogInfo(string.Format("Exist GetNextActivitys ActivityInstId:{0}", activityInstId));
+                }
             }
         }
 
+
+        public bool TransferBack(int activityInstId, List<int> listToActivityId)
+        {
+            lock (lockObj)
+            {
+                return TransferBackForInner(activityInstId, listToActivityId);
+            }
+        }
 
         /// <summary>
         /// 转交一下步
@@ -449,9 +498,11 @@ namespace Anchor.FA.BLL.WorkFlow
         /// <param name="flowInstId">流程实例id</param>
         /// <param name="listToActivityId">下一步关卡list</param>
         /// <returns>是否成功</returns>
-        public bool TransferBack(int activityInstId, List<int> listToActivityId)
+        private bool TransferBackForInner(int activityInstId, List<int> listToActivityId)
         {
-            using (TransactionScope scope = new TransactionScope())
+            Log4Net.LogInfo(string.Format("Enter TransferBack activityInstId:{0}", activityInstId));
+
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions() { IsolationLevel = IsolationLevel.ReadCommitted }))
             {
                 try
                 {
@@ -483,7 +534,7 @@ namespace Anchor.FA.BLL.WorkFlow
                             if (instToActivity.Activity.Type == ActivityType.END)
                             {
                                 instFlow.ApprovePass += new FlowInstance.ApproveEventHandler(Mail.SendMail);
-                                //instFlow.ApprovePass 有点像js的callbacks函数
+
                                 instFlow.ApprovePass += new FlowInstance.ApproveEventHandler(CallBack.Update);
 
                                 instToActivity.Close();
@@ -553,9 +604,13 @@ namespace Anchor.FA.BLL.WorkFlow
                 }
                 catch (Exception ex)
                 {
-                    Log4Net.LogError("Workflow_Engine", string.Format("ActivityInstId:{0},Message:{1}", activityInstId, ex.ToString()));
+                    Log4Net.LogError("TransferBack", string.Format("ActivityInstId:{0},Message:{1}", activityInstId, ex.ToString()));
 
                     return false;
+                }
+                finally
+                {
+                    Log4Net.LogInfo(string.Format("Exist TransferBack activityInstId:{0}", activityInstId));
                 }
                 
             }
