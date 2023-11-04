@@ -245,6 +245,9 @@ namespace Anchor.FA.DAL.BasicInfo
                             join o3 in dbContext.TStation on p.分站编码 equals o3.编码 into o3_join
                             from o3 in o3_join.DefaultIfEmpty()
 
+                            join o4 in dbContext.TTask on p.任务编码 equals o4.任务编码 into o4_join
+                            from o4 in o4_join.DefaultIfEmpty()
+
                             select new
                             {
                                 ID = p.车辆编码,
@@ -282,6 +285,7 @@ namespace Anchor.FA.DAL.BasicInfo
                                 State = o1.名称,
                                 Color = (Nullable<int>)o1.颜色,
                                 Tel = p.随车电话,
+                                AlarmEventCode = o4.事件编码,
                             });
                 if (!string.IsNullOrEmpty(RealCode))//实际标识
                 {

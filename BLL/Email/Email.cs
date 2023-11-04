@@ -102,7 +102,6 @@ namespace Anchor.FA.BLL.Email
             E_Mail_Worker mailS = new E_Mail_Worker();
 
             //发件人(类型为0)
-            mailS.ID = PrimaryKeyCreater.getIntPrimaryKey("E_Mail_Worker");
             mailS.MailId = entity.ID;
             mailS.WorkerId = int.Parse(fromID);
             mailS.Type = 0;
@@ -122,7 +121,7 @@ namespace Anchor.FA.BLL.Email
             foreach (string r in toID.Split(',').ToList())
             {
                 E_Mail_Worker mailR = new E_Mail_Worker();
-                mailR.ID = PrimaryKeyCreater.getIntPrimaryKey("E_Mail_Worker");
+
                 mailR.MailId = entity.ID;
                 mailR.WorkerId = int.Parse(r);
                 mailR.Type = 1;
@@ -145,7 +144,6 @@ namespace Anchor.FA.BLL.Email
                 foreach (string r in ccID.Split(',').ToList())
                 {
                     E_Mail_Worker mailCC = new E_Mail_Worker();
-                    mailCC.ID = PrimaryKeyCreater.getIntPrimaryKey("E_Mail_Worker");
                     mailCC.MailId = entity.ID;
                     mailCC.WorkerId = int.Parse(r);
                     mailCC.Type = 2;

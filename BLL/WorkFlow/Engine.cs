@@ -49,7 +49,7 @@ namespace Anchor.FA.BLL.WorkFlow
                 //    return -1;
                 //}
 
-                using (TransactionScope scope = new TransactionScope())
+                using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions() { IsolationLevel = IsolationLevel.ReadCommitted }))
                 {
                     try
                     {
@@ -94,7 +94,7 @@ namespace Anchor.FA.BLL.WorkFlow
         /// <returns></returns>
         public bool RecallFlow(int flowId, int flowNo, string remark)
         {
-            using (TransactionScope scope = new TransactionScope())  
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions() { IsolationLevel = IsolationLevel.ReadCommitted }))
             {
                 try
                 {
@@ -253,7 +253,7 @@ namespace Anchor.FA.BLL.WorkFlow
 
             lock (lockObj)
             {
-                using (TransactionScope scope = new TransactionScope())
+                using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions() { IsolationLevel = IsolationLevel.ReadCommitted }))
                 {
                     try
                     {
@@ -404,7 +404,7 @@ namespace Anchor.FA.BLL.WorkFlow
         {
             List<F_ACTIVITY> listActivity = new List<F_ACTIVITY>();
 
-            using (TransactionScope scope = new TransactionScope())
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions() { IsolationLevel = IsolationLevel.ReadCommitted }))
             {
                 //获得关卡的发散Transation
                 ActivityInstance activityInst = new ActivityInstance(activityInstId);
@@ -448,7 +448,7 @@ namespace Anchor.FA.BLL.WorkFlow
         /// <returns>是否成功</returns>
         public bool TransferBack(int activityInstId, List<int> listToActivityId)
         {
-            using (TransactionScope scope = new TransactionScope())
+            using (TransactionScope scope = new TransactionScope(TransactionScopeOption.Required, new TransactionOptions() { IsolationLevel = IsolationLevel.ReadCommitted }))
             {
                 try
                 {

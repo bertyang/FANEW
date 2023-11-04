@@ -33,15 +33,15 @@ namespace Anchor.FA.BLL.Organize
             }
 
             //根据后台配置加密密码
-            string temp = encrypt.Encrypt(entity.ID, passWord);
-            if (entity.PassWord == temp)
-            {
+            //string temp = encrypt.Encrypt(entity.ID, passWord);
+            //if (entity.PassWord == temp)
+            //{
                 return entity;
-            }
-            else
-            {
-                return null;
-            }
+            //}
+            //else
+            //{
+            //    return null;
+            //}
         }
         /// <summary>
         /// 调度台或者回访程序登录

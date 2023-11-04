@@ -64,7 +64,7 @@ namespace Anchor.FA.Model
 		/// <summary>
 		/// ID
 		/// </summary>
-		[Column(IsPrimaryKey = true, Name = "ID", DbType = "int", Storage = "_ID")]
+		[Column(IsPrimaryKey = true, Name = "ID", DbType = "int", Storage = "_ID", IsDbGenerated = true)]
 		public int ID
 		{
 			get { return _ID; }
