@@ -1,0 +1,129 @@
+<?xml version="1.0" encoding="utf-8"?>
+<wsdl:definitions xmlns:http="http://schemas.xmlsoap.org/wsdl/http/" xmlns:soapenc="http://schemas.xmlsoap.org/soap/encoding/" xmlns:mime="http://schemas.xmlsoap.org/wsdl/mime/" xmlns:tns="http://tempuri.org/" xmlns:soap="http://schemas.xmlsoap.org/wsdl/soap/" xmlns:s="http://www.w3.org/2001/XMLSchema" xmlns:tm="http://microsoft.com/wsdl/mime/textMatching/" xmlns:soap12="http://schemas.xmlsoap.org/wsdl/soap12/" targetNamespace="http://tempuri.org/" xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">
+  <wsdl:types>
+    <s:schema elementFormDefault="qualified" targetNamespace="http://tempuri.org/">
+      <s:element name="GetAmbulance">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="CNumber" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="GetAmbulanceResponse">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="GetAmbulanceResult" type="s:string" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:element name="SavePatientRecord">
+        <s:complexType>
+          <s:sequence>
+            <s:element minOccurs="0" maxOccurs="1" name="PatientRecordInfo" type="tns:ArrayOfPatientRecordInfo" />
+            <s:element minOccurs="0" maxOccurs="1" name="MeasureInfo" type="tns:ArrayOfMeasureInfo" />
+          </s:sequence>
+        </s:complexType>
+      </s:element>
+      <s:complexType name="ArrayOfPatientRecordInfo">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="PatientRecordInfo" nillable="true" type="tns:PatientRecordInfo" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="PatientRecordInfo">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="ID" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="Value" type="s:string" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="ArrayOfMeasureInfo">
+        <s:sequence>
+          <s:element minOccurs="0" maxOccurs="unbounded" name="MeasureInfo" nillable="true" type="tns:MeasureInfo" />
+        </s:sequence>
+      </s:complexType>
+      <s:complexType name="MeasureInfo">
+        <s:sequence>
+          <s:element minOccurs="1" maxOccurs="1" name="ID" type="s:int" />
+          <s:element minOccurs="0" maxOccurs="1" name="Value" type="s:string" />
+          <s:element minOccurs="1" maxOccurs="1" name="OrderID" type="s:int" />
+        </s:sequence>
+      </s:complexType>
+      <s:element name="SavePatientRecordResponse">
+        <s:complexType />
+      </s:element>
+    </s:schema>
+  </wsdl:types>
+  <wsdl:message name="GetAmbulanceSoapIn">
+    <wsdl:part name="parameters" element="tns:GetAmbulance" />
+  </wsdl:message>
+  <wsdl:message name="GetAmbulanceSoapOut">
+    <wsdl:part name="parameters" element="tns:GetAmbulanceResponse" />
+  </wsdl:message>
+  <wsdl:message name="SavePatientRecordSoapIn">
+    <wsdl:part name="parameters" element="tns:SavePatientRecord" />
+  </wsdl:message>
+  <wsdl:message name="SavePatientRecordSoapOut">
+    <wsdl:part name="parameters" element="tns:SavePatientRecordResponse" />
+  </wsdl:message>
+  <wsdl:portType name="Service1Soap">
+    <wsdl:operation name="GetAmbulance">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">传递车辆任务信息</wsdl:documentation>
+      <wsdl:input message="tns:GetAmbulanceSoapIn" />
+      <wsdl:output message="tns:GetAmbulanceSoapOut" />
+    </wsdl:operation>
+    <wsdl:operation name="SavePatientRecord">
+      <wsdl:documentation xmlns:wsdl="http://schemas.xmlsoap.org/wsdl/">保存病例及救治措施记录</wsdl:documentation>
+      <wsdl:input message="tns:SavePatientRecordSoapIn" />
+      <wsdl:output message="tns:SavePatientRecordSoapOut" />
+    </wsdl:operation>
+  </wsdl:portType>
+  <wsdl:binding name="Service1Soap" type="tns:Service1Soap">
+    <soap:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="GetAmbulance">
+      <soap:operation soapAction="http://tempuri.org/GetAmbulance" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="SavePatientRecord">
+      <soap:operation soapAction="http://tempuri.org/SavePatientRecord" style="document" />
+      <wsdl:input>
+        <soap:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:binding name="Service1Soap12" type="tns:Service1Soap">
+    <soap12:binding transport="http://schemas.xmlsoap.org/soap/http" />
+    <wsdl:operation name="GetAmbulance">
+      <soap12:operation soapAction="http://tempuri.org/GetAmbulance" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+    <wsdl:operation name="SavePatientRecord">
+      <soap12:operation soapAction="http://tempuri.org/SavePatientRecord" style="document" />
+      <wsdl:input>
+        <soap12:body use="literal" />
+      </wsdl:input>
+      <wsdl:output>
+        <soap12:body use="literal" />
+      </wsdl:output>
+    </wsdl:operation>
+  </wsdl:binding>
+  <wsdl:service name="Service1">
+    <wsdl:port name="Service1Soap" binding="tns:Service1Soap">
+      <soap:address location="http://127.0.0.1/Ambulance/Service1.asmx" />
+    </wsdl:port>
+    <wsdl:port name="Service1Soap12" binding="tns:Service1Soap12">
+      <soap12:address location="http://127.0.0.1/Ambulance/Service1.asmx" />
+    </wsdl:port>
+  </wsdl:service>
+</wsdl:definitions>
