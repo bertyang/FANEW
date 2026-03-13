@@ -1,0 +1,142 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Web.config.example — 本地开发配置模板
+  使用步骤：
+    1. 将此文件复制为 Web/Web.config
+    2. 将所有 YOUR_* 占位符替换为实际值
+    3. 切勿将含有真实凭据的 Web.config 提交到版本控制
+
+  Setup steps:
+    1. Copy this file to Web/Web.config
+    2. Replace all YOUR_* placeholders with your actual values
+    3. Never commit Web.config containing real credentials to source control
+-->
+<configuration>
+  <configSections>
+    <sectionGroup name="spring">
+      <section name="context" type="Spring.Context.Support.ContextHandler, Spring.Core" />
+      <section name="objects" type="Spring.Context.Support.DefaultSectionHandler, Spring.Core" />
+    </sectionGroup>
+    <section name="log4net" type="log4net.Config.Log4NetConfigurationSectionHandler,log4net-net-1.0" />
+  </configSections>
+  <connectionStrings>
+    <!-- Replace YOUR_* placeholders with your actual SQL Server connection details -->
+    <add name="ConnectionString"
+         connectionString="user id=YOUR_DB_USER;pwd=YOUR_DB_PASSWORD;data source=YOUR_SERVER;persist security info=False;initial catalog=YOUR_DATABASE;MultipleActiveResultSets=true" />
+    <add name="ConnectionStringReport"
+         connectionString="user id=YOUR_DB_USER;pwd=YOUR_DB_PASSWORD;data source=YOUR_SERVER;persist security info=False;initial catalog=YOUR_DATABASE;MultipleActiveResultSets=true" />
+    <!--跨服务器调度库（可选）-->
+    <!--<add name="ConnectionStringDispatch"
+         connectionString="user id=YOUR_DB_USER;pwd=YOUR_DB_PASSWORD;data source=YOUR_REMOTE_SERVER;persist security info=False;initial catalog=YOUR_DISPATCH_DATABASE;MultipleActiveResultSets=true" />-->
+  </connectionStrings>
+  <system.transactions>
+    <defaultSettings timeout="00:01:00" />
+  </system.transactions>
+  <appSettings>
+    <add key="CustemErrorHandle" value="true" />
+    <add key="aspnet:UseTaskFriendlySynchronizationContext" value="true" />
+    <add key="webpages:Version" value="2.0.0.0" />
+    <add key="webpages:Enabled" value="false" />
+    <add key="PreserveLoginUrl" value="true" />
+    <add key="ClientValidationEnabled" value="true" />
+    <add key="UnobtrusiveJavaScriptEnabled" value="true" />
+    <add key="IsInternetAccess" value="false" />
+  </appSettings>
+  <system.web>
+    <customErrors mode="Off" />
+    <httpHandlers>
+      <add path="Reserved.ReportViewerWebControl.axd" verb="*"
+           type="Microsoft.Reporting.WebForms.HttpHandler, Microsoft.ReportViewer.WebForms, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91"
+           validate="false" />
+    </httpHandlers>
+    <compilation debug="true" targetFramework="4.0">
+      <assemblies>
+        <add assembly="Microsoft.ReportViewer.WebForms, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845DCD8080CC91" />
+        <add assembly="Microsoft.ReportViewer.Common, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845DCD8080CC91" />
+      </assemblies>
+      <buildProviders>
+        <add extension=".rdlc"
+             type="Microsoft.Reporting.RdlBuildProvider, Microsoft.ReportViewer.WebForms, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845DCD8080CC91" />
+      </buildProviders>
+    </compilation>
+    <authentication mode="Forms">
+      <forms loginUrl="~/Account/Login" cookieless="UseCookies" timeout="480" />
+    </authentication>
+    <pages>
+      <namespaces>
+        <add namespace="System.Web.Helpers" />
+        <add namespace="System.Web.Mvc" />
+        <add namespace="System.Web.Mvc.Ajax" />
+        <add namespace="System.Web.Mvc.Html" />
+        <add namespace="System.Web.Optimization" />
+        <add namespace="System.Web.Routing" />
+        <add namespace="System.Web.WebPages" />
+      </namespaces>
+    </pages>
+    <httpRuntime requestValidationMode="2.0" maxRequestLength="300000" executionTimeout="10" />
+  </system.web>
+  <system.webServer>
+    <validation validateIntegratedModeConfiguration="false" />
+    <modules runAllManagedModulesForAllRequests="true" />
+    <handlers>
+      <add name="ReportViewerWebControlHandler" preCondition="integratedMode" verb="*"
+           path="Reserved.ReportViewerWebControl.axd"
+           type="Microsoft.Reporting.WebForms.HttpHandler, Microsoft.ReportViewer.WebForms, Version=12.0.0.0, Culture=neutral, PublicKeyToken=89845dcd8080cc91" />
+    </handlers>
+    <security>
+      <requestFiltering>
+        <requestLimits maxAllowedContentLength="300000000" />
+      </requestFiltering>
+    </security>
+  </system.webServer>
+  <runtime>
+    <assemblyBinding xmlns="urn:schemas-microsoft-com:asm.v1">
+      <dependentAssembly>
+        <assemblyIdentity name="System.Web.Helpers" publicKeyToken="31bf3856ad364e35" />
+        <bindingRedirect oldVersion="1.0.0.0-2.0.0.0" newVersion="2.0.0.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Web.Mvc" publicKeyToken="31bf3856ad364e35" />
+        <bindingRedirect oldVersion="0.0.0.0-4.0.0.0" newVersion="4.0.0.0" />
+      </dependentAssembly>
+      <dependentAssembly>
+        <assemblyIdentity name="System.Web.WebPages" publicKeyToken="31bf3856ad364e35" />
+        <bindingRedirect oldVersion="0.0.0.0-2.0.0.0" newVersion="2.0.0.0" />
+      </dependentAssembly>
+    </assemblyBinding>
+  </runtime>
+  <spring>
+    <context>
+      <resource uri="config://spring/objects" />
+    </context>
+    <objects xmlns="http://www.springframework.net">
+      <object id="Engine" type="Anchor.FA.BLL.WorkFlow.Engine,Anchor.FA.BLL.WorkFlow" />
+      <object id="Worker" type="Anchor.FA.BLL.Organize.Worker,Anchor.FA.BLL.Organize" />
+      <object id="Organize" type="Anchor.FA.BLL.Organize.Organize,Anchor.FA.BLL.Organize" />
+      <object id="Category" type="Anchor.FA.Inventory.BLL.Category,Anchor.FA.Inventory.BLL" />
+      <object id="Goods" type="Anchor.FA.Inventory.BLL.Goods,Anchor.FA.Inventory.BLL" />
+      <object id="Storehouse" type="Anchor.FA.Inventory.BLL.Storehouse,Anchor.FA.Inventory.BLL" />
+      <object id="Email" type="Anchor.FA.BLL.Email.Email,Anchor.FA.BLL.Email" />
+      <object id="ESignature" type="Anchor.FA.Utility.ESignatureDefault,Anchor.FA.Utility" />
+      <object id="SMS" type="Anchor.FA.BLL.Notice.InnerCommBll,Anchor.FA.BLL.Notice" />
+      <object id="Flow" type="Anchor.FA.BLL.WorkFlow.Flow,Anchor.FA.BLL.WorkFlow" />
+      <object id="Encrypt" type="Anchor.FA.Utility.HashEncrypt,Anchor.FA.Utility" />
+    </objects>
+  </spring>
+  <log4net>
+    <root>
+      <level value="ALL" />
+      <appender-ref ref="LogFileAppender" />
+    </root>
+    <appender name="LogFileAppender" type="log4net.Appender.RollingFileAppender">
+      <file value="log\" />
+      <appendToFile value="true" />
+      <param name="StaticLogFileName" value="false" />
+      <param name="DatePattern" value="yyyyMMdd&quot;.txt&quot;" />
+      <param name="RollingStyle" value="Date" />
+      <layout type="log4net.Layout.PatternLayout">
+        <param name="ConversionPattern" value="%d [%r] [%t] %-5p  - %m%n" />
+      </layout>
+    </appender>
+  </log4net>
+</configuration>
